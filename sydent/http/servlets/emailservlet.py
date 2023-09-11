@@ -27,10 +27,14 @@ from sydent.validators import (
     InvalidSessionIdException,
     SessionExpiredException,
 )
+from sydent.db.valsession import ThreePidValSessionStore
 
 if TYPE_CHECKING:
     from sydent.sydent import Sydent
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EmailRequestCodeServlet(SydentResource):
     isLeaf = True
@@ -59,6 +63,21 @@ class EmailRequestCodeServlet(SydentResource):
 
         email = args["email"]
         clientSecret = args["client_secret"]
+        # tokenSendMode can either be 'email' or 'response', mode is email by default
+        tokenSendMode = "email" 
+        hostname = bytes(request.getRequestHostname()).decode('utf-8')
+
+        logger.info("tokenSendMode", tokenSendMode)
+        logger.info("hostname", hostname)
+
+        # get the mode from request json and if the mode is response
+        # set the tokenSendMode to response
+        try:
+            custom_args = get_args(request, ("mode"))
+            if custom_args["mode"] == "response":
+                tokenSendMode = "response"
+        except:
+            pass
 
         try:
             # if we got this via the v1 API in a querystring or urlencoded body,
@@ -80,7 +99,7 @@ class EmailRequestCodeServlet(SydentResource):
                 "errcode": "M_INVALID_PARAM",
                 "error": f"send_attempt should be an integer (got {args['send_attempt']}",
             }
-
+        
         if not is_valid_client_secret(clientSecret):
             request.setResponseCode(400)
             return {
@@ -98,16 +117,28 @@ class EmailRequestCodeServlet(SydentResource):
         if "next_link" in args and not args["next_link"].startswith("file:///"):
             nextLink = args["next_link"]
 
+        generalConfig =  self.sydent.config.general
+        trustedClient = hostname in generalConfig.trusted_clients or generalConfig.trust_all_clients
+
         try:
-            sid = self.sydent.validators.email.requestToken(
-                email,
-                clientSecret,
-                sendAttempt,
-                nextLink,
-                ipaddress=ipaddress,
-                brand=brand,
-            )
-            resp = {"sid": str(sid)}
+            if tokenSendMode == "email" or not trustedClient:
+                sid = self.sydent.validators.email.requestToken(
+                    email,
+                    clientSecret,
+                    sendAttempt,
+                    nextLink,
+                    ipaddress=ipaddress,
+                    brand=brand,
+                )
+                resp = {"sid": str(sid)}
+
+            elif tokenSendMode == "response" and trustedClient:
+                valSessionStore = ThreePidValSessionStore(self.sydent)   
+                valSession, token_info = valSessionStore.getOrCreateTokenSession(
+                    medium="email", address=email, clientSecret=clientSecret
+                )
+                resp = {"sid": str(valSession.id), "token": token_info.token}
+
         except EmailAddressException:
             request.setResponseCode(400)
             resp = {"errcode": "M_INVALID_EMAIL", "error": "Invalid email address"}

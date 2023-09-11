@@ -10,6 +10,7 @@ _trial_temp.lock
 .python-version
 .mypy_cache
 /env
+venv
 
 # for direnv users
 .envrc
