@@ -83,7 +83,7 @@ CONFIG_DEFAULTS = {
         # client in response where the request came from trusted clients
         # Add comma separated host names. '*' to trust all clients
         # if there is '*' along with other values then '*' will be ignored
-        "trusted_clients": ""
+        "trusted_clients": "*"
     },
     "db": {
         "db.file": os.environ.get("SYDENT_DB_PATH", "sydent.db"),

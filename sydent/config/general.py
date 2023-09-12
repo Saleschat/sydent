@@ -115,7 +115,9 @@ class GeneralConfig(BaseConfig):
         if trusted_clients == '*':
             self.trust_all_clients = True
         else:
-            self.trusted_clients = list_from_comma_sep_string(trusted_clients).remove('*')
+            self.trusted_clients = list_from_comma_sep_string(trusted_clients)
+            if '*' in self.trusted_clients:
+                self.trusted_clients.remove('*')
 
         if not self.enable_v1_access:
             self.enable_v1_associations = False

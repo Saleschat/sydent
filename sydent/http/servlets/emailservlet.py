@@ -59,7 +59,7 @@ class EmailRequestCodeServlet(SydentResource):
             # limiting.
             self.sydent.email_sender_ratelimiter.ratelimit(ipaddress)
 
-        args = get_args(request, ("email", "client_secret", "send_attempt"))
+        args = get_args(request, ("email", "client_secret", "send_attempt", "mode"))
 
         email = args["email"]
         clientSecret = args["client_secret"]
@@ -67,18 +67,12 @@ class EmailRequestCodeServlet(SydentResource):
         tokenSendMode = "email" 
         hostname = bytes(request.getRequestHostname()).decode('utf-8')
 
-        logger.info("tokenSendMode", tokenSendMode)
-        logger.info("hostname", hostname)
 
         # get the mode from request json and if the mode is response
         # set the tokenSendMode to response
-        try:
-            custom_args = get_args(request, ("mode"))
-            if custom_args["mode"] == "response":
-                tokenSendMode = "response"
-        except:
-            pass
-
+        if args["mode"] == "response":
+            tokenSendMode = "response"
+            
         try:
             # if we got this via the v1 API in a querystring or urlencoded body,
             # then the values in args will be a string. So check that
