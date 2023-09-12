@@ -78,7 +78,7 @@ class RegisterServlet(SydentResource):
 
         try:
             result = await self.client.get_json(
-                "https://%s/_matrix/federation/v1/openid/userinfo?access_token=%s"
+                "matrix://%s/_matrix/federation/v1/openid/userinfo?access_token=%s"
                 % (
                     matrix_server,
                     urllib.parse.quote(args["access_token"]),
