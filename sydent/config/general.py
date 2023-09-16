@@ -108,17 +108,6 @@ class GeneralConfig(BaseConfig):
             )
         self.homeserver_allow_list = homeserver_allow_list
 
-
-        self.trusted_clients = []
-        self.trust_all_clients = False
-        trusted_clients = cfg.get("general", "trusted_clients")
-        if trusted_clients == '*':
-            self.trust_all_clients = True
-        else:
-            self.trusted_clients = list_from_comma_sep_string(trusted_clients)
-            if '*' in self.trusted_clients:
-                self.trusted_clients.remove('*')
-
         if not self.enable_v1_access:
             self.enable_v1_associations = False
         else:

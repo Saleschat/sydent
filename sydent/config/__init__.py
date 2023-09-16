@@ -79,11 +79,6 @@ CONFIG_DEFAULTS = {
         "homeserver_allow_list": "",
         # If set to 'false', entirely disable access via the V1 api.
         "enable_v1_access": "true",
-        # This is a custom property added to allow tokens to be returned to the
-        # client in response where the request came from trusted clients
-        # Add comma separated host names. '*' to trust all clients
-        # if there is '*' along with other values then '*' will be ignored
-        "trusted_clients": "*"
     },
     "db": {
         "db.file": os.environ.get("SYDENT_DB_PATH", "sydent.db"),

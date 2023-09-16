@@ -57,6 +57,8 @@ from sydent.http.servlets.termsservlet import TermsServlet
 from sydent.http.servlets.threepidbindservlet import ThreePidBindServlet
 from sydent.http.servlets.threepidunbindservlet import ThreePidUnbindServlet
 from sydent.http.servlets.versions import VersionsServlet
+from sydent.http.servlets.identitiesservlet import IdentitiesServlet
+from sydent.http.servlets.identitieslookupservlet import IdentitiesLookupServlet
 
 if TYPE_CHECKING:
     from sydent.sydent import Sydent
@@ -141,6 +143,8 @@ class ClientApiHttpServer:
         validate_v2.putChild(b"email", email_v2)
         validate_v2.putChild(b"msisdn", msisdn_v2)
 
+
+
         threepid_v2.putChild(
             b"getValidated3pid", GetValidated3pidServlet(sydent, require_auth=True)
         )
@@ -176,6 +180,13 @@ class ClientApiHttpServer:
         v2.putChild(b"sign-ed25519", BlindlySignStuffServlet(sydent, require_auth=True))
         v2.putChild(b"lookup", LookupV2Servlet(sydent, lookup_pepper))
         v2.putChild(b"hash_details", HashDetailsServlet(sydent, lookup_pepper))
+
+        identities = Resource()
+        identities.putChild(b"bind", IdentitiesServlet(sydent))
+        identities.putChild(b"lookup", IdentitiesLookupServlet(sydent))
+
+        v2.putChild(b"identities", identities)
+        
 
         self.factory = Site(root, SizeLimitingRequest)
         self.factory.displayTracebacks = False

@@ -67,6 +67,18 @@ class SqliteDatabase:
     def _upgradeSchema(self) -> None:
         curVer = self._getSchemaVersion()
 
+        cur = self.db.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS identities (medium varchar(16) not null, "
+            "value varchar(256) not null, "
+            "mxid varchar(256) not null, "
+            "ts integer not null)"
+        ) 
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS identity_value_mxid on identities (value, mxid)"
+        )
+        cur.close()
+
         if curVer < 1:
             cur = self.db.cursor()
 
