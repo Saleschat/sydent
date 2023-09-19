@@ -26,7 +26,7 @@ class IdentitiesServlet(SydentResource):
     @jsonwrap
     def render_POST(self, request: Request) -> JsonDict:
         send_cors(request)
-        account = authV2(self.sydent, request)
+        # account = authV2(self.sydent, request)
         args = get_args(request, ("token", "mxid"))
 
         token = args["token"]
@@ -39,14 +39,14 @@ class IdentitiesServlet(SydentResource):
         validate_data(token, "token")
         validate_data(mxid, "mxid")
 
-        if account:
-            # make sure that the user is the same as
-            if account.userId != mxid:
-                raise MatrixRestError(
-                    403,
-                    "M_UNAUTHORIZED",
-                    "This user is prohibited from binding to the user"
-                )
+        # if account:
+        #     # make sure that the user is the same as
+        #     if account.userId != mxid:
+        #         raise MatrixRestError(
+        #             403,
+        #             "M_UNAUTHORIZED",
+        #             "This user is prohibited from binding to the user"
+        #         )
 
         try:
             self.sydent.identityBinder.addBinding(token, mxid)

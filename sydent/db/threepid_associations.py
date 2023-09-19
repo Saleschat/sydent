@@ -399,13 +399,76 @@ class GlobalAssociationStore:
         )
         self.sydent.db.commit()
 
-    def retrieveMxidsForHashes(self, query: str, requester: str) -> List[str]:
+    def retrieveMxidsForHashes(self, addresses: List[str]) -> Dict[str, str]:
         """Returns a mapping from hash: mxid from a list of given lookup_hash values
 
-        :param query: query string to search against all identities
-        :param requester: mxid of the user requesting the search 
+        :param addresses: An array of lookup_hash values to check against the db
 
-        :returns a list of mxids of all discovered matches
+        :returns a dictionary of lookup_hash values to mxids of all discovered matches
+        """
+        cur = self.sydent.db.cursor()
+
+        cur.execute(
+            "CREATE TEMPORARY TABLE tmp_retrieve_mxids_for_hashes "
+            "(lookup_hash VARCHAR)"
+        )
+        cur.execute(
+            "CREATE INDEX tmp_retrieve_mxids_for_hashes_lookup_hash ON "
+            "tmp_retrieve_mxids_for_hashes(lookup_hash)"
+        )
+
+        results = {}
+        try:
+            # Convert list of addresses to list of tuples of addresses
+            tuplized_addresses = [(x,) for x in addresses]
+
+            inserted_cap = 0
+            while inserted_cap < len(tuplized_addresses):
+                cur.executemany(
+                    "INSERT INTO tmp_retrieve_mxids_for_hashes(lookup_hash) "
+                    "VALUES (?)",
+                    tuplized_addresses[inserted_cap : inserted_cap + 500],
+                )
+                inserted_cap += 500
+
+            res = cur.execute(
+                # 'notBefore' is the time the association starts being valid, 'notAfter' the the time at which
+                # it ceases to be valid, so the ts must be greater than 'notBefore' and less than 'notAfter'.
+                "SELECT gta.lookup_hash, gta.mxid FROM global_threepid_associations gta "
+                "JOIN tmp_retrieve_mxids_for_hashes "
+                "ON gta.lookup_hash = tmp_retrieve_mxids_for_hashes.lookup_hash "
+                "WHERE gta.notBefore < ? AND gta.notAfter > ? "
+                "ORDER BY gta.lookup_hash, gta.mxid, gta.ts",
+                (time_msec(), time_msec()),
+            )
+
+            # Place the results from the query into a dictionary
+            # Results are sorted from oldest to newest, so if there are multiple mxid's for
+            # the same lookup hash, only the newest mapping will be returned
+
+            # Type safety: lookup_hash is a nullable string in
+            # global_threepid_associations. But it must be equal to a lookup_hash
+            # in the temporary table thanks to the join condition.
+            # The temporary table gets hashes from the `addresses` argument,
+            # which is a list of (non-None) strings.
+            # So lookup_hash really is a str.
+            lookup_hash: str
+            mxid: str
+            for lookup_hash, mxid in res.fetchall():
+                results[lookup_hash] = mxid
+
+        finally:
+            cur.execute("DROP TABLE tmp_retrieve_mxids_for_hashes")
+
+        return results
+    
+    def getMxidsForSearchTermByOrgId(self, query: str, requester: str) -> List[str]:
+        """Return a list of mxids that matches the query for address value filtered by org_id
+        
+        :param query: query string to search against all identities
+        :param requester: mxid of the user requesting the search
+
+        :returns a list of mxids of discovered matches
         """
         cur = self.sydent.db.cursor()
         search_query = "%" + query + "%"
@@ -421,7 +484,61 @@ class GlobalAssociationStore:
             (requester, requester, search_query),
         )
 
+        
         for row in res.fetchall():
             results.append(row[0])
 
         return results
+    
+    def checkSameOrgByMxid(self, user: str, other: str) -> bool:
+        """Checks if user and other belong to the same org
+
+        :param user: mxid of the user
+        :param other: mxid of the other
+
+        :returns true if user belong to same org else false
+        """
+
+        cur = self.sydent.db.cursor()
+
+        res = cur.execute(
+            "SELECT a.address, b.address from global_threepid_associations as a "
+            "JOIN global_threepid_associations b ON a.address = b.address where (a.id < b.id OR a.id > b.id)"
+            "AND a.medium = 'org_id' AND b.medium = 'org_id' "
+            "AND a.mxid = ? AND b.mxid = ? ",
+            (user.strip(), other.strip())
+        )
+
+        rows = res.fetchall()
+        # Ideally the results should have 2 entries, if not return false
+        if len(rows) < 1:
+            return False
+
+        other_org_id: str
+        user_org_id: str
+
+        for user_org_id, other_org_id in rows:
+            if other_org_id == user_org_id:
+                return True
+        
+        return False
+
+    def checkSameOrgByMedium(self, user: str, medium: str, address:str) -> bool:
+
+        cur = self.sydent.db.cursor()
+
+        res = cur.execute(
+            "SELECT b.mxid from global_threepid_associations as a "
+            "JOIN global_threepid_associations b ON a.mxid = b.mxid "
+            "WHERE a.medium = ? AND b.medium = 'org_id' AND a.address = ? AND b.mxid != ?",
+            (medium.strip(), address.strip(), user.strip())
+        )
+
+        row = res.fetchall()
+        
+        if len(row) < 1:
+            return False
+        
+        [(other,)] = row
+
+        return self.checkSameOrgByMxid(user, other)

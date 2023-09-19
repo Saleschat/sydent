@@ -64,19 +64,83 @@ class LookupV2Servlet(SydentResource):
                  User IDs for which no mapping is found are omitted.
         """
         send_cors(request)
-        account = authV2(self.sydent, request)
-        
-        args = get_args(request, ("query",))
-        query = args["query"]
 
-        if not isinstance(query, str):
+        authV2(self.sydent, request)
+
+        args = get_args(request, ("addresses", "algorithm", "pepper"))
+
+        addresses = args["addresses"]
+        if not isinstance(addresses, list):
             request.setResponseCode(400)
-            return {"errcode": "M_INVALID_PARAM", "error": "query must be a string"}
+            return {"errcode": "M_INVALID_PARAM", "error": "addresses must be a list"}
 
-        search_requester = account.userId
-        mappings = self.globalAssociationStore.retrieveMxidsForHashes(query, search_requester)
+        algorithm = str(args["algorithm"])
+        if algorithm not in HashDetailsServlet.known_algorithms:
+            request.setResponseCode(400)
+            return {"errcode": "M_INVALID_PARAM", "error": "algorithm is not supported"}
 
-        return {"mappings": mappings}
+        # Ensure address count is under the configured limit
+        limit = self.sydent.config.general.address_lookup_limit
+        if len(addresses) > limit:
+            request.setResponseCode(400)
+            return {
+                "errcode": "M_TOO_LARGE",
+                "error": "More than the maximum amount of " "addresses provided",
+            }
+
+        pepper = str(args["pepper"])
+        if pepper != self.lookup_pepper:
+            request.setResponseCode(400)
+            return {
+                "errcode": "M_INVALID_PEPPER",
+                "error": "pepper does not match '%s'" % (self.lookup_pepper,),
+                "algorithm": algorithm,
+                "lookup_pepper": self.lookup_pepper,
+            }
+
+        logger.info(
+            "Lookup of %d threepid(s) with algorithm %s", len(addresses), algorithm
+        )
+        if algorithm == "none":
+            # Lookup without hashing
+            medium_address_tuples = []
+            for address_and_medium in addresses:
+                # Parse medium, address components
+                address_medium_split = address_and_medium.split()
+
+                # Forbid addresses that contain a space
+                if len(address_medium_split) != 2:
+                    request.setResponseCode(400)
+                    return {
+                        "errcode": "M_UNKNOWN",
+                        "error": 'Invalid "address medium" pair: "%s"'
+                        % address_and_medium,
+                    }
+
+                # Get the mxid for the address/medium combo if known
+                address, medium = address_medium_split
+                medium_address_tuples.append((medium, address))
+
+            # Lookup the mxids
+            medium_address_mxid_tuples = self.globalAssociationStore.getMxids(
+                medium_address_tuples
+            )
+
+            # Return a dictionary of lookup_string: mxid values
+            return {
+                "mappings": {
+                    "%s %s" % (x[1], x[0]): x[2] for x in medium_address_mxid_tuples
+                }
+            }
+
+        elif algorithm == "sha256":
+            # Lookup using SHA256 with URL-safe base64 encoding
+            mappings = self.globalAssociationStore.retrieveMxidsForHashes(addresses)
+
+            return {"mappings": mappings}
+
+        request.setResponseCode(400)
+        return {"errcode": "M_INVALID_PARAM", "error": "algorithm is not supported"}
 
     def render_OPTIONS(self, request: Request) -> bytes:
         send_cors(request)

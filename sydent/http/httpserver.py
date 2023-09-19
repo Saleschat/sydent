@@ -59,6 +59,7 @@ from sydent.http.servlets.threepidunbindservlet import ThreePidUnbindServlet
 from sydent.http.servlets.versions import VersionsServlet
 from sydent.http.servlets.identitiesservlet import IdentitiesServlet
 from sydent.http.servlets.identitieslookupservlet import IdentitiesLookupServlet
+from sydent.http.servlets.organizationverifierservlet import OrganizationVerifierServlet
 
 if TYPE_CHECKING:
     from sydent.sydent import Sydent
@@ -184,6 +185,7 @@ class ClientApiHttpServer:
         identities = Resource()
         identities.putChild(b"bind", IdentitiesServlet(sydent))
         identities.putChild(b"lookup", IdentitiesLookupServlet(sydent))
+        identities.putChild(b"verify-org", OrganizationVerifierServlet(sydent))
 
         v2.putChild(b"identities", identities)
         

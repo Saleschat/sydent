@@ -6,7 +6,7 @@ from sydent.http.servlets import (
     jsonwrap,
     send_cors,
 )
-from sydent.db.identity_association import IdentityAssociationStore
+from sydent.db.threepid_associations import GlobalAssociationStore
 from sydent.types import JsonDict
 from twisted.web.server import Request
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ class IdentitiesLookupServlet(SydentResource):
     def __init__(self, sydent: "Sydent") -> None:
         super().__init__()
         self.sydent = sydent
-        self.identitiesAssocStore = IdentityAssociationStore(self.sydent)
+        self.globalAssociationStore = GlobalAssociationStore(self.sydent)
 
     @jsonwrap
     def render_POST(self, request: Request) -> JsonDict:
@@ -40,13 +40,6 @@ class IdentitiesLookupServlet(SydentResource):
         args = get_args(request, ("search",))
         search_term = args["search"]
 
-        mxids = self.identitiesAssocStore.getMxids(search_term, requester)
+        mxids = self.globalAssociationStore.getMxidsForSearchTermByOrgId(search_term, requester)
 
         return {"mappings": mxids}
-
-
-
-
-
-
-
