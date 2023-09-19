@@ -67,18 +67,6 @@ class SqliteDatabase:
     def _upgradeSchema(self) -> None:
         curVer = self._getSchemaVersion()
 
-        cur = self.db.cursor()
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS identities (medium varchar(16) not null, "
-            "value varchar(256) not null, "
-            "mxid varchar(256) not null, "
-            "ts integer not null)"
-        ) 
-        cur.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS identity_value_mxid on identities (value, mxid)"
-        )
-        cur.close()
-
         if curVer < 1:
             cur = self.db.cursor()
 
@@ -99,7 +87,8 @@ class SqliteDatabase:
                 "mxid varchar(256), "
                 "ts integer, "
                 "notBefore bigint, "
-                "notAfter bigint)"
+                "notAfter bigint, " 
+                "UNIQUE(mxid, medium))"
             )
             cur.execute(
                 "INSERT INTO local_threepid_associations (medium, address, mxid, ts, notBefore, notAfter) "
@@ -131,7 +120,8 @@ class SqliteDatabase:
                 "notAfter integer not null, "
                 "originServer varchar(255) not null, "
                 "originId integer not null, "
-                "sgAssoc text not null)"
+                "sgAssoc text not null, "
+                "UNIQUE(mxid, medium))"
             )
             cur.execute(
                 "INSERT INTO global_threepid_associations "

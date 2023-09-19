@@ -57,6 +57,7 @@ from sydent.util.ratelimiter import Ratelimiter
 from sydent.util.tokenutils import generateAlphanumericTokenOfLength
 from sydent.validators.emailvalidator import EmailValidator
 from sydent.validators.msisdnvalidator import MsisdnValidator
+from sydent.identity.bind import IdentityBinder
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,7 @@ class Sydent:
         self.sig_verifier: Verifier = Verifier(self)
 
         self.threepidBinder: ThreepidBinder = ThreepidBinder(self)
+        self.identityBinder: IdentityBinder = IdentityBinder(self)
 
         self.sslComponents: SslComponents = SslComponents(self)
 

@@ -399,65 +399,29 @@ class GlobalAssociationStore:
         )
         self.sydent.db.commit()
 
-    def retrieveMxidsForHashes(self, addresses: List[str]) -> Dict[str, str]:
+    def retrieveMxidsForHashes(self, query: str, requester: str) -> List[str]:
         """Returns a mapping from hash: mxid from a list of given lookup_hash values
 
-        :param addresses: An array of lookup_hash values to check against the db
+        :param query: query string to search against all identities
+        :param requester: mxid of the user requesting the search 
 
-        :returns a dictionary of lookup_hash values to mxids of all discovered matches
+        :returns a list of mxids of all discovered matches
         """
         cur = self.sydent.db.cursor()
+        search_query = "%" + query + "%"
+        results: List[str] = []
 
-        cur.execute(
-            "CREATE TEMPORARY TABLE tmp_retrieve_mxids_for_hashes "
-            "(lookup_hash VARCHAR)"
+        res = cur.execute(
+            "SELECT DISTINCT gta.mxid FROM global_threepid_associations gta "
+            "JOIN global_threepid_associations gtb "
+            "ON gta.mxid = gtb.mxid "
+            "WHERE gta.medium != 'org_id' AND gtb.medium = 'org_id' "
+            "AND gtb.address = (SELECT address FROM global_threepid_associations WHERE medium = 'org_id' AND mxid = ?) "
+            "AND gta.mxid != ? AND gta.address LIKE ?",
+            (requester, requester, search_query),
         )
-        cur.execute(
-            "CREATE INDEX tmp_retrieve_mxids_for_hashes_lookup_hash ON "
-            "tmp_retrieve_mxids_for_hashes(lookup_hash)"
-        )
 
-        results = {}
-        try:
-            # Convert list of addresses to list of tuples of addresses
-            tuplized_addresses = [(x,) for x in addresses]
-
-            inserted_cap = 0
-            while inserted_cap < len(tuplized_addresses):
-                cur.executemany(
-                    "INSERT INTO tmp_retrieve_mxids_for_hashes(lookup_hash) "
-                    "VALUES (?)",
-                    tuplized_addresses[inserted_cap : inserted_cap + 500],
-                )
-                inserted_cap += 500
-
-            res = cur.execute(
-                # 'notBefore' is the time the association starts being valid, 'notAfter' the the time at which
-                # it ceases to be valid, so the ts must be greater than 'notBefore' and less than 'notAfter'.
-                "SELECT gta.lookup_hash, gta.mxid FROM global_threepid_associations gta "
-                "JOIN tmp_retrieve_mxids_for_hashes "
-                "ON gta.lookup_hash = tmp_retrieve_mxids_for_hashes.lookup_hash "
-                "WHERE gta.notBefore < ? AND gta.notAfter > ? "
-                "ORDER BY gta.lookup_hash, gta.mxid, gta.ts",
-                (time_msec(), time_msec()),
-            )
-
-            # Place the results from the query into a dictionary
-            # Results are sorted from oldest to newest, so if there are multiple mxid's for
-            # the same lookup hash, only the newest mapping will be returned
-
-            # Type safety: lookup_hash is a nullable string in
-            # global_threepid_associations. But it must be equal to a lookup_hash
-            # in the temporary table thanks to the join condition.
-            # The temporary table gets hashes from the `addresses` argument,
-            # which is a list of (non-None) strings.
-            # So lookup_hash really is a str.
-            lookup_hash: str
-            mxid: str
-            for lookup_hash, mxid in res.fetchall():
-                results[lookup_hash] = mxid
-
-        finally:
-            cur.execute("DROP TABLE tmp_retrieve_mxids_for_hashes")
+        for row in res.fetchall():
+            results.append(row[0])
 
         return results
