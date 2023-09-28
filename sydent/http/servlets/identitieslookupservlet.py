@@ -12,6 +12,7 @@ from twisted.web.server import Request
 if TYPE_CHECKING:
     from sydent.sydent import Sydent
 
+
 class IdentitiesLookupServlet(SydentResource):
     def __init__(self, sydent: "Sydent") -> None:
         super().__init__()
@@ -27,19 +28,20 @@ class IdentitiesLookupServlet(SydentResource):
 
         Params: A JSON object containing the following keys:
                 * 'search': the search term to filter identities
-        
+
         Returns: Object with key 'mappings' which is a list of mxid results
         """
 
         send_cors(request)
-        
+
         account = authV2(self.sydent, request)
 
         # the person who has requested the search
         requester = account.userId
-        args = get_args(request, ("search",))
+        args = get_args(request, ("search", "org_id"))
         search_term = args["search"]
 
-        mxids = self.globalAssociationStore.getMxidsForSearchTermByOrgId(search_term, requester)
+        mxids = self.globalAssociationStore.getMxidsForSearchTermByOrgId(
+            search_term, requester)
 
         return {"mappings": mxids}

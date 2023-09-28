@@ -90,13 +90,16 @@ class LocalPeer(Peer[bool]):
 
         :return: A deferred that succeeds with the value `True`.
         """
+
         globalAssocStore = GlobalAssociationStore(self.sydent)
         for localId in sgAssocs:
             if localId > self.lastId:
+
                 assocObj = threePidAssocFromDict(sgAssocs[localId])
 
                 # ensure we are casefolding email addresses
-                assocObj.address = normalise_address(assocObj.address, assocObj.medium)
+                assocObj.address = normalise_address(
+                    assocObj.address, assocObj.medium)
 
                 if assocObj.mxid is not None:
                     # Assign a lookup_hash to this association
@@ -110,7 +113,8 @@ class LocalPeer(Peer[bool]):
                             pepper,
                         ],
                     )
-                    assocObj.lookup_hash = sha256_and_url_safe_base64(str_to_hash)
+                    assocObj.lookup_hash = sha256_and_url_safe_base64(
+                        str_to_hash)
 
                     # We can probably skip verification for the local peer (although it could
                     # be good as a sanity check)
@@ -150,7 +154,8 @@ class RemotePeer(Peer[IResponse]):
         self.lastSentVersion = lastSentVersion
 
         # look up or build the replication URL
-        replication_url = self.sydent.config.http.base_replication_urls.get(server_name)
+        replication_url = self.sydent.config.http.base_replication_urls.get(
+            server_name)
 
         if replication_url is None:
             if not port:
@@ -186,7 +191,8 @@ class RemotePeer(Peer[IResponse]):
                 pubkey_decoded = decode_base64(pubkey)
             except Exception as e:
                 raise ConfigError(
-                    "Unable to decode public key for peer %s: %s" % (server_name, e),
+                    "Unable to decode public key for peer %s: %s" % (
+                        server_name, e),
                 )
 
         self.verify_key = signedjson.key.decode_verify_key_bytes(
@@ -219,7 +225,8 @@ class RemotePeer(Peer[IResponse]):
             raise e
 
         # Verify the JSON
-        signedjson.sign.verify_signed_json(assoc, self.servername, self.verify_key)
+        signedjson.sign.verify_signed_json(
+            assoc, self.servername, self.verify_key)
 
     def pushUpdates(self, sgAssocs: SignedAssociations) -> "Deferred[IResponse]":
         """
@@ -235,7 +242,8 @@ class RemotePeer(Peer[IResponse]):
             self.replication_url, body
         )
         if reqDeferred is None:
-            raise RuntimeError(f"Unable to push sgAssocs to {self.replication_url}")
+            raise RuntimeError(
+                f"Unable to push sgAssocs to {self.replication_url}")
 
         # XXX: We'll also need to prune the deleted associations out of the
         # local associations table once they've been replicated to all peers
@@ -244,7 +252,8 @@ class RemotePeer(Peer[IResponse]):
 
         updateDeferred: "Deferred[IResponse]" = defer.Deferred()
 
-        reqDeferred.addCallback(self._pushSuccess, updateDeferred=updateDeferred)
+        reqDeferred.addCallback(
+            self._pushSuccess, updateDeferred=updateDeferred)
         reqDeferred.addErrback(self._pushFailed, updateDeferred=updateDeferred)
 
         return updateDeferred
@@ -266,7 +275,8 @@ class RemotePeer(Peer[IResponse]):
             updateDeferred.callback(result)
         else:
             d = readBody(result)
-            d.addCallback(self._failedPushBodyRead, updateDeferred=updateDeferred)
+            d.addCallback(self._failedPushBodyRead,
+                          updateDeferred=updateDeferred)
             d.addErrback(self._pushFailed, updateDeferred=updateDeferred)
 
     def _failedPushBodyRead(

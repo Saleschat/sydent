@@ -60,6 +60,7 @@ from sydent.http.servlets.versions import VersionsServlet
 from sydent.http.servlets.identitiesservlet import IdentitiesServlet
 from sydent.http.servlets.identitieslookupservlet import IdentitiesLookupServlet
 from sydent.http.servlets.organizationverifierservlet import OrganizationVerifierServlet
+from sydent.http.servlets.idlookupservlet import IdLookupServlet
 
 if TYPE_CHECKING:
     from sydent.sydent import Sydent
@@ -106,7 +107,8 @@ class ClientApiHttpServer:
         pubkey.putChild(b"isvalid", PubkeyIsValidServlet(sydent))
         pubkey.putChild(b"ed25519:0", Ed25519Servlet(sydent))
         pubkey.putChild(b"ephemeral", ephemeralPubkey)
-        ephemeralPubkey.putChild(b"isvalid", EphemeralPubkeyIsValidServlet(sydent))
+        ephemeralPubkey.putChild(
+            b"isvalid", EphemeralPubkeyIsValidServlet(sydent))
 
         # v1
         if self.sydent.config.general.enable_v1_access:
@@ -120,7 +122,8 @@ class ClientApiHttpServer:
 
             v1.putChild(b"pubkey", pubkey)
 
-            threepid_v1.putChild(b"getValidated3pid", GetValidated3pidServlet(sydent))
+            threepid_v1.putChild(b"getValidated3pid",
+                                 GetValidated3pidServlet(sydent))
             threepid_v1.putChild(b"unbind", unbind)
             v1.putChild(b"3pid", threepid_v1)
 
@@ -144,12 +147,12 @@ class ClientApiHttpServer:
         validate_v2.putChild(b"email", email_v2)
         validate_v2.putChild(b"msisdn", msisdn_v2)
 
-
-
         threepid_v2.putChild(
-            b"getValidated3pid", GetValidated3pidServlet(sydent, require_auth=True)
+            b"getValidated3pid", GetValidated3pidServlet(
+                sydent, require_auth=True)
         )
-        threepid_v2.putChild(b"bind", ThreePidBindServlet(sydent, require_auth=True))
+        threepid_v2.putChild(
+            b"bind", ThreePidBindServlet(sydent, require_auth=True))
         threepid_v2.putChild(b"unbind", unbind)
 
         email_v2.putChild(
@@ -160,10 +163,12 @@ class ClientApiHttpServer:
         )
 
         msisdn_v2.putChild(
-            b"requestToken", MsisdnRequestCodeServlet(sydent, require_auth=True)
+            b"requestToken", MsisdnRequestCodeServlet(
+                sydent, require_auth=True)
         )
         msisdn_v2.putChild(
-            b"submitToken", MsisdnValidateCodeServlet(sydent, require_auth=True)
+            b"submitToken", MsisdnValidateCodeServlet(
+                sydent, require_auth=True)
         )
 
         # v2 exclusive APIs
@@ -177,8 +182,10 @@ class ClientApiHttpServer:
         v2.putChild(b"validate", validate_v2)
         v2.putChild(b"pubkey", pubkey)
         v2.putChild(b"3pid", threepid_v2)
-        v2.putChild(b"store-invite", StoreInviteServlet(sydent, require_auth=True))
-        v2.putChild(b"sign-ed25519", BlindlySignStuffServlet(sydent, require_auth=True))
+        v2.putChild(b"store-invite",
+                    StoreInviteServlet(sydent, require_auth=True))
+        v2.putChild(b"sign-ed25519",
+                    BlindlySignStuffServlet(sydent, require_auth=True))
         v2.putChild(b"lookup", LookupV2Servlet(sydent, lookup_pepper))
         v2.putChild(b"hash_details", HashDetailsServlet(sydent, lookup_pepper))
 
@@ -186,9 +193,9 @@ class ClientApiHttpServer:
         identities.putChild(b"bind", IdentitiesServlet(sydent))
         identities.putChild(b"lookup", IdentitiesLookupServlet(sydent))
         identities.putChild(b"verify-org", OrganizationVerifierServlet(sydent))
+        identities.putChild(b"", IdLookupServlet(sydent))
 
         v2.putChild(b"identities", identities)
-        
 
         self.factory = Site(root, SizeLimitingRequest)
         self.factory.displayTracebacks = False
@@ -197,7 +204,8 @@ class ClientApiHttpServer:
         httpPort = self.sydent.config.http.client_port
         interface = self.sydent.config.http.client_bind_address
 
-        logger.info("Starting Client API HTTP server on %s:%d", interface, httpPort)
+        logger.info("Starting Client API HTTP server on %s:%d",
+                    interface, httpPort)
         self.sydent.reactor.listenTCP(
             httpPort,
             self.factory,
@@ -211,7 +219,8 @@ class InternalApiHttpServer:
         self.sydent = sydent
 
     def setup(self, interface: str, port: int) -> None:
-        logger.info("Starting Internal API HTTP server on %s:%d", interface, port)
+        logger.info("Starting Internal API HTTP server on %s:%d",
+                    interface, port)
         root = Resource()
 
         matrix = Resource()

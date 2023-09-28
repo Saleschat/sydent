@@ -40,6 +40,7 @@ class Signer:
             "ts": assoc.ts,
             "not_before": assoc.not_before,
             "not_after": assoc.not_after,
+            "org_id": assoc.org_id
         }
         sgassoc.update(assoc.extra_fields)
         sgassoc = signedjson.sign.sign_json(

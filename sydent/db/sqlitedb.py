@@ -84,26 +84,29 @@ class SqliteDatabase:
                 "CREATE TABLE local_threepid_associations (id integer primary key autoincrement, "
                 "medium varchar(16) not null, "
                 "address varchar(256) not null, "
+                "org_id varchar(256) not null, "
                 "mxid varchar(256), "
                 "ts integer, "
                 "notBefore bigint, "
-                "notAfter bigint, " 
-                "UNIQUE(mxid, medium))"
+                "notAfter bigint, "
+                "UNIQUE(org_id, mxid, medium))"
             )
             cur.execute(
                 "INSERT INTO local_threepid_associations (medium, address, mxid, ts, notBefore, notAfter) "
                 "SELECT medium, address, mxid, ts, notBefore, notAfter FROM old_local_threepid_associations"
             )
             cur.execute(
-                "CREATE UNIQUE INDEX local_threepid_medium_address on local_threepid_associations(medium, address)"
+                "CREATE UNIQUE INDEX local_threepid_medium_address on local_threepid_associations(org_id, medium)"
             )
             cur.execute("DROP TABLE old_local_threepid_associations")
 
             # same autoincrement for global_threepid_associations (fields stay non-nullable because we don't need
             # entries in this table for deletions, we can just delete the rows)
             cur.execute("DROP INDEX IF EXISTS global_threepid_medium_address")
-            cur.execute("DROP INDEX IF EXISTS global_threepid_medium_lower_address")
-            cur.execute("DROP INDEX IF EXISTS global_threepid_originServer_originId")
+            cur.execute(
+                "DROP INDEX IF EXISTS global_threepid_medium_lower_address")
+            cur.execute(
+                "DROP INDEX IF EXISTS global_threepid_originServer_originId")
             cur.execute("DROP INDEX IF EXISTS medium_lower_address")
             cur.execute("DROP INDEX IF EXISTS threepid_originServer_originId")
             cur.execute(
@@ -114,6 +117,7 @@ class SqliteDatabase:
                 "(id integer primary key autoincrement, "
                 "medium varchar(16) not null, "
                 "address varchar(256) not null, "
+                "org_id varchar(256) not null, "
                 "mxid varchar(256) not null, "
                 "ts integer not null, "
                 "notBefore bigint not null, "
@@ -121,7 +125,7 @@ class SqliteDatabase:
                 "originServer varchar(255) not null, "
                 "originId integer not null, "
                 "sgAssoc text not null, "
-                "UNIQUE(mxid, medium))"
+                "UNIQUE(org_id, mxid, medium))"
             )
             cur.execute(
                 "INSERT INTO global_threepid_associations "

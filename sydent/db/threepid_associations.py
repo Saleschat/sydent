@@ -48,8 +48,8 @@ class LocalAssociationStore:
         # sqlite's support for upserts is atrocious
         cur.execute(
             "insert or replace into local_threepid_associations "
-            "('medium', 'address', 'lookup_hash', 'mxid', 'ts', 'notBefore', 'notAfter')"
-            " values (?, ?, ?, ?, ?, ?, ?)",
+            "('medium', 'address', 'lookup_hash', 'mxid', 'ts', 'notBefore', 'notAfter', 'org_id')"
+            " values (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 assoc.medium,
                 assoc.address,
@@ -58,6 +58,7 @@ class LocalAssociationStore:
                 assoc.ts,
                 assoc.not_before,
                 assoc.not_after,
+                assoc.org_id
             ),
         )
         self.sydent.db.commit()
@@ -81,7 +82,7 @@ class LocalAssociationStore:
             afterId = -1
 
         q = (
-            "select id, medium, address, lookup_hash, mxid, ts, notBefore, notAfter from "
+            "select id, medium, address, lookup_hash, mxid, ts, notBefore, notAfter, org_id from "
             "local_threepid_associations "
             "where id > ? order by id asc"
         )
@@ -104,10 +105,12 @@ class LocalAssociationStore:
             Optional[int],
             Optional[int],
             Optional[int],
+            Optional[str],
         ]
+
         for row in res.fetchall():
             assoc = ThreepidAssociation(
-                row[1], row[2], row[3], row[4], row[5], row[6], row[7]
+                row[1], row[2], row[3], row[4], row[5], row[6], row[7], org_id=row[8]
             )
             assocs[row[0]] = assoc
             maxId = row[0]
@@ -280,7 +283,7 @@ class GlobalAssociationStore:
             while inserted_cap < len(threepid_tuples):
                 cur.executemany(
                     "INSERT INTO tmp_getmxids (medium, address) VALUES (?, ?)",
-                    threepid_tuples[inserted_cap : inserted_cap + 500],
+                    threepid_tuples[inserted_cap: inserted_cap + 500],
                 )
                 inserted_cap += 500
 
@@ -335,8 +338,8 @@ class GlobalAssociationStore:
         cur = self.sydent.db.cursor()
         cur.execute(
             "insert or ignore into global_threepid_associations "
-            "(medium, address, lookup_hash, mxid, ts, notBefore, notAfter, originServer, originId, sgAssoc) values "
-            "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(medium, address, lookup_hash, mxid, ts, notBefore, notAfter, originServer, originId, sgAssoc, org_id) values "
+            "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 assoc.medium,
                 assoc.address,
@@ -348,6 +351,7 @@ class GlobalAssociationStore:
                 originServer,
                 originId,
                 rawSgAssoc,
+                assoc.org_id
             ),
         )
         if commit:
@@ -427,7 +431,7 @@ class GlobalAssociationStore:
                 cur.executemany(
                     "INSERT INTO tmp_retrieve_mxids_for_hashes(lookup_hash) "
                     "VALUES (?)",
-                    tuplized_addresses[inserted_cap : inserted_cap + 500],
+                    tuplized_addresses[inserted_cap: inserted_cap + 500],
                 )
                 inserted_cap += 500
 
@@ -461,10 +465,10 @@ class GlobalAssociationStore:
             cur.execute("DROP TABLE tmp_retrieve_mxids_for_hashes")
 
         return results
-    
+
     def getMxidsForSearchTermByOrgId(self, query: str, requester: str) -> List[str]:
         """Return a list of mxids that matches the query for address value filtered by org_id
-        
+
         :param query: query string to search against all identities
         :param requester: mxid of the user requesting the search
 
@@ -484,12 +488,36 @@ class GlobalAssociationStore:
             (requester, requester, search_query),
         )
 
-        
         for row in res.fetchall():
             results.append(row[0])
 
         return results
-    
+
+    def getAssociationsbyMxid(self, mxid: str, org_id: str, requester: str) -> List[Dict]:
+        cur = self.sydent.db.cursor()
+        results: List[str] = []
+
+        res = cur.execute(
+            "SELECT DISTINCT org_id FROM global_threepid_associations WHERE mxid = ?", (requester,))
+
+        orgs = []
+        for org in res:
+            orgs.append(org[0])
+
+        if not org_id in orgs:
+            return []
+
+        res = cur.execute(
+            "SELECT gta.medium, gta.address FROM global_threepid_associations gta where "
+            "gta.org_id = ? and gta.mxid = ?",
+            (org_id, mxid),
+        )
+
+        for row in res.fetchall():
+            results.append(row)
+
+        return results
+
     def checkSameOrgByMxid(self, user: str, other: str) -> bool:
         """Checks if user and other belong to the same org
 
@@ -520,10 +548,10 @@ class GlobalAssociationStore:
         for user_org_id, other_org_id in rows:
             if other_org_id == user_org_id:
                 return True
-        
+
         return False
 
-    def checkSameOrgByMedium(self, user: str, medium: str, address:str) -> bool:
+    def checkSameOrgByMedium(self, user: str, medium: str, address: str) -> bool:
 
         cur = self.sydent.db.cursor()
 
@@ -535,10 +563,10 @@ class GlobalAssociationStore:
         )
 
         row = res.fetchall()
-        
+
         if len(row) < 1:
             return False
-        
+
         [(other,)] = row
 
         return self.checkSameOrgByMxid(user, other)

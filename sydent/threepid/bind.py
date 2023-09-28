@@ -45,7 +45,7 @@ class ThreepidBinder:
         self.sydent = sydent
         self.hashing_store = HashingMetadataStore(sydent)
 
-    def addBinding(self, medium: str, address: str, mxid: str) -> Dict[str, Any]:
+    def addBinding(self, medium: str, address: str, mxid: str, org_id: str) -> Dict[str, Any]:
         """
         Binds the given 3pid to the given mxid.
 
@@ -85,6 +85,7 @@ class ThreepidBinder:
             createdAt,
             createdAt,
             expires,
+            org_id=org_id
         )
 
         localAssocStore.addOrUpdateAssociation(assoc)
@@ -92,7 +93,8 @@ class ThreepidBinder:
         self.sydent.pusher.doLocalPush()
 
         joinTokenStore = JoinTokenStore(self.sydent)
-        pendingJoinTokens = joinTokenStore.getTokens(medium, normalised_address)
+        pendingJoinTokens = joinTokenStore.getTokens(
+            medium, normalised_address)
         invites = []
         # Widen the value type to Any: we're going to set the signed key
         # to point to a dict, but pendingJoinTokens yields Dict[str, str]
@@ -129,7 +131,8 @@ class ThreepidBinder:
         """
 
         # ensure we are casefolding email addresses
-        threepid["address"] = normalise_address(threepid["address"], threepid["medium"])
+        threepid["address"] = normalise_address(
+            threepid["address"], threepid["medium"])
 
         localAssocStore = LocalAssociationStore(self.sydent)
         localAssocStore.removeAssociation(threepid, mxid)
@@ -162,7 +165,8 @@ class ThreepidBinder:
             )
             return
 
-        post_url = "matrix://%s/_matrix/federation/v1/3pid/onbind" % (matrix_server,)
+        post_url = "matrix://%s/_matrix/federation/v1/3pid/onbind" % (
+            matrix_server,)
 
         logger.info("Making bind callback to: %s", post_url)
 
@@ -215,7 +219,8 @@ class ThreepidBinder:
             "Error notifying on bind for %s: %s - rescheduling", assoc["mxid"], error
         )
         self.sydent.reactor.callLater(
-            math.pow(2, attempt), defer.ensureDeferred, self._notify(assoc, attempt + 1)
+            math.pow(2, attempt), defer.ensureDeferred, self._notify(
+                assoc, attempt + 1)
         )
 
     # The below is lovingly ripped off of synapse/http/endpoint.py

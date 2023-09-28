@@ -26,6 +26,7 @@ def threePidAssocFromDict(d: Dict[str, Any]) -> "ThreepidAssociation":
         d["ts"],
         d["not_before"],
         d["not_after"],
+        org_id=d["org_id"]
     )
     return assoc
 
@@ -51,4 +52,5 @@ class ThreepidAssociation:
     ts: Optional[int]
     not_before: Optional[int]
     not_after: Optional[int]
+    org_id: Optional[str]
     extra_fields: Dict[str, Any] = {}
