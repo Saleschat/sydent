@@ -492,7 +492,7 @@ class GlobalAssociationStore:
         for row in res.fetchall():
             mxids.append(row[0])
 
-        mxids = ["mxid = %s" % (mxid) for mxid in mxids]
+        mxids = ["mxid = '%s'" % (mxid) for mxid in mxids]
 
         stmt = "SELECT mxid, medium, address from global_threepid_associations WHERE " + \
             " OR ".join(mxids) + " AND medium != 'org_id'"
@@ -511,7 +511,7 @@ class GlobalAssociationStore:
         keys = list(mxid_to_threepid_map.keys())
 
         for key in keys:
-            results.push({"mxid": key, "3pids": mxid_to_threepid_map[key]})
+            results.append({"mxid": key, "3pids": mxid_to_threepid_map[key]})
 
         return results
 
