@@ -489,7 +489,12 @@ class GlobalAssociationStore:
             (requester, requester, search_query),
         )
 
-        for row in res.fetchall():
+        rows = res.fetchall()
+
+        if len(rows) == 0:
+            return []
+
+        for row in rows:
             mxids.append(row[0])
 
         mxids = ["mxid = '%s'" % (mxid) for mxid in mxids]

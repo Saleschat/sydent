@@ -34,11 +34,11 @@ class IdentitiesLookupServlet(SydentResource):
 
         send_cors(request)
 
-        # account = authV2(self.sydent, request)
+        account = authV2(self.sydent, request)
 
         # the person who has requested the search
-        # requester = account.userId
-        requester = '@tauseef:fm1.cloudconverse.in'
+        requester = account.userId
+
         args = get_args(request, ("search", "org_id"))
         search_term = args["search"]
 
