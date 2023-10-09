@@ -476,7 +476,8 @@ class GlobalAssociationStore:
         """
         cur = self.sydent.db.cursor()
         search_query = "%" + query + "%"
-        results: List[str] = []
+        mxids: List[Any] = []
+        results: List[Dict[str, Any]] = []
 
         res = cur.execute(
             "SELECT DISTINCT gta.mxid FROM global_threepid_associations gta "
@@ -489,7 +490,28 @@ class GlobalAssociationStore:
         )
 
         for row in res.fetchall():
-            results.append(row[0])
+            mxids.append(row[0])
+
+        mxids = ["mxid = %s" % (mxid) for mxid in mxids]
+
+        stmt = "SELECT mxid, medium, address from global_threepid_associations WHERE " + \
+            " OR ".join(mxids) + " AND medium != 'org_id'"
+
+        res = cur.execute(stmt)
+
+        mxid_to_threepid_map: Dict[str, List[Dict[str, str]]] = {}
+
+        for row in res.fetchall():
+            mxid = row[0]
+            if mxid not in mxid_to_threepid_map:
+                mxid_to_threepid_map[mxid] = []
+
+            mxid_to_threepid_map[mxid].append({"key": row[1], "value": row[2]})
+
+        keys = list(mxid_to_threepid_map.keys())
+
+        for key in keys:
+            results.push({"mxid": key, "3pids": mxid_to_threepid_map[key]})
 
         return results
 
