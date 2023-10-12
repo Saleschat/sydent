@@ -485,8 +485,8 @@ class GlobalAssociationStore:
             "ON gta.mxid = gtb.mxid "
             "WHERE gta.medium != 'org_id' AND gtb.medium = 'org_id' "
             "AND gtb.address = (SELECT address FROM global_threepid_associations WHERE medium = 'org_id' AND mxid = ?) "
-            "AND gta.mxid != ? AND gta.address LIKE ?",
-            (requester, requester, search_query),
+            "AND gta.address LIKE ?",
+            (requester, search_query),
         )
 
         rows = res.fetchall()

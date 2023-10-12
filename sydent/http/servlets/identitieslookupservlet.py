@@ -28,6 +28,7 @@ class IdentitiesLookupServlet(SydentResource):
 
         Params: A JSON object containing the following keys:
                 * 'search': the search term to filter identities
+                * 'org_id': org_id of the requester
 
         Returns: Object with key 'mappings' which is a list of mxid results
         """
