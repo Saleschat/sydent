@@ -479,6 +479,8 @@ class GlobalAssociationStore:
         mxids: List[Any] = []
         results: List[Dict[str, Any]] = []
 
+        logger.info(requester)
+
         res = cur.execute(
             "SELECT DISTINCT gta.mxid FROM global_threepid_associations gta "
             "JOIN global_threepid_associations gtb "
@@ -498,6 +500,8 @@ class GlobalAssociationStore:
             mxids.append(row[0])
 
         mxids = ["mxid = '%s'" % (mxid) for mxid in mxids]
+
+        logger.info(mxids)
 
         stmt = "SELECT mxid, medium, address from global_threepid_associations WHERE " + \
             " OR ".join(mxids) + " AND medium != 'org_id'"
