@@ -12,6 +12,8 @@ from twisted.web.server import Request
 if TYPE_CHECKING:
     from sydent.sydent import Sydent
 
+import logging
+logger = logging.getLogger("identity")
 
 class IdentitiesLookupServlet(SydentResource):
     def __init__(self, sydent: "Sydent") -> None:
@@ -45,5 +47,7 @@ class IdentitiesLookupServlet(SydentResource):
 
         mxids = self.globalAssociationStore.getMxidsForSearchTermByOrgId(
             search_term, requester)
+        
+        logger.info(mxids)
 
         return {"mappings": mxids}
